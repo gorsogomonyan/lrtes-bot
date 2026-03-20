@@ -2,6 +2,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 import random
 import asyncio
+import os
+TOKEN = os.getenv("BOT_TOKEN")
 
 players = {}
 spies = []
