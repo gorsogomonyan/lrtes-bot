@@ -2,8 +2,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 import random
 import asyncio
-import os
-TOKEN = os.getenv("BOT_TOKEN")
 
 players = {}
 spies = []
@@ -14,36 +12,53 @@ votes = {}
 vote_chat = None
 
 words = [
-"վանք","դպրոց","բանկ","շուկա","կինոթատրոն",
-"հիվանդանոց","օդանավակայան","կայարան",
-"ռեստորան","սրճարան","հյուրանոց",
-"թանգարան","գրադարան","մարզադաշտ",
-"լողավազան","սուպերմարկետ"
+"վանք","դպրոց","բանկ","շուկա","կինոթատրոն","հիվանդանոց","օդանավակայան","կայարան",
+"ռեստորան","սրճարան","հյուրանոց","թանգարան","գրադարան","մարզադաշտ","լողավազան","սուպերմարկետ",
+"գյուղ","քաղաք","մետրո","կղզի","նավահանգիստ","տուն","բնակարան","գրասենյակ","խոհանոց",
+"հյուրասենյակ","լաբորատորիա","բենզալցակայան","ոստիկանություն","բանտ","դատարան",
+"խաղահրապարակ","զբոսայգի","լիճ","գետ","լեռ","մթերային խանութ","դեղատուն","հացատուն",
+"հյուրատուն","ավտոբուս","գնացք","նավ","ինքնաթիռ","տաքսի","ավտոկայան",
+"կրկես","թատրոն","համերգասրահ","սպորտդահլիճ","բասկետբոլի դաշտ","ֆուտբոլի դաշտ",
+"դպրոցի բակ","բակ","պարահանդես","ակումբ","դիսկոտեկ","լողափ","անապատ","անտառ",
+"ճամբար","կայանատեղի","կամուրջ","ճանապարհ","խաչմերուկ","թունել","տոնավաճառ",
+"մոլ","հագուստի խանութ","կոշիկի խանութ","ոսկերչական խանութ","շինանյութի խանութ",
+"տպարան","բանկոմատ","համալսարան","դպրոցական դասարան","լսարան","մարզասրահ",
+"յոգայի սրահ","սպա կենտրոն","վարսավիրանոց","գեղեցկության սրահ","ֆոտոստուդիա",
+"ռադիոկայան","հեռուստաընկերություն","բուսաբանական այգի","կենդանաբանական այգի",
+"ակվարիում","ջրաշխարհ","խաղասրահ","բիլիարդ","բոուլինգ","սահադաշտ",
+"դահուկային կենտրոն","ռազմաբազա","հրշեջ կայան","շտապ օգնություն"
 ]
 
 def discussion_time():
-
     n = len(players)
-
-    if n <= 5:
+    if n <= 4:
+        return 30
+    elif n <= 6:
         return 60
-    elif n <= 8:
+    elif n <= 10:
         return 90
-    elif n <= 12:
-        return 120
     else:
-        return 240
+        return 120
 
+def vote_time():
+    n = len(players)
+    if n <= 4:
+        return 20
+    elif n <= 6:
+        return 30
+    elif n <= 10:
+        return 40
+    elif n <= 12:
+        return 60
+    else:
+        return 90
 
 async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     member = await context.bot.get_chat_member(
         update.effective_chat.id,
         update.effective_user.id
     )
-
     return member.status in ["administrator","creator"]
-
 
 async def lrtes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -56,12 +71,10 @@ async def lrtes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     players = {}
     game_started = False
 
-    await update.message.reply_text(
-        "🕵️ Լրտես խաղը բացվեց\n\n"
-        "Գրեք /join խաղին միանալու համար\n"
-        "Ադմինը կսկսի խաղը /start"
+    await update.message.reply_photo(
+        photo=open("logo.jpg","rb"),
+        caption="🕵️ SPY GAME\n\nԳրեք /join խաղին միանալու համար\nԱդմինը կսկսի խաղը /start"
     )
-
 
 async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -70,6 +83,10 @@ async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user = update.effective_user
+
+    if user.id in players:
+        return
+
     players[user.id] = user.first_name
 
     text = "👥 Խաղացողներ\n\n"
@@ -81,25 +98,11 @@ async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(text)
 
-
-async def leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user = update.effective_user
-
-    if user.id in players:
-
-        name = players[user.id]
-        del players[user.id]
-
-        await update.message.reply_text(f"{name} դուրս եկավ խաղից")
-
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    global spies, word, game_started
+    global spies, word, game_started, vote_chat
 
     if not await is_admin(update, context):
-        await update.message.reply_text("⛔ Միայն ադմինը կարող է սկսել խաղը")
         return
 
     if len(players) < 4:
@@ -107,6 +110,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     game_started = True
+
+    vote_chat = update.effective_chat.id
 
     word = random.choice(words)
 
@@ -121,25 +126,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if p in spies:
             await context.bot.send_message(p,"🤫 Դու Լրտես ես")
         else:
-            await context.bot.send_message(p,f"📍 Բառը՝ {word}")
+            await context.bot.send_message(p,f"📍 Բառը — {word}")
 
     t = discussion_time()
 
-    await update.message.reply_text(
-        f"💬 Քննարկում\nԺամանակը՝ {t//60} րոպե"
-    )
+    await update.message.reply_text(f"💬 Քննարկում {t} վայրկյան")
 
     await asyncio.sleep(t)
 
-    await update.message.reply_text("🗳 Գրեք /vote")
-
+    await vote(update, context)
 
 async def vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    global votes, vote_chat
+    global votes
 
     votes = {}
-    vote_chat = update.effective_chat.id
 
     keyboard = []
 
@@ -154,11 +155,22 @@ async def vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
+    await context.bot.send_message(
+        vote_chat,
         "🗳 Ընտրեք ում եք կասկածում",
         reply_markup=reply_markup
     )
 
+    t = vote_time()
+
+    asyncio.create_task(vote_timer(context,t))
+
+async def vote_timer(context,t):
+
+    await asyncio.sleep(t)
+
+    if game_started and len(votes) < len(players):
+        await finish_vote(context)
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -175,29 +187,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     votes[voter] = voted
 
-    voter_name = query.from_user.first_name
-
-    if voted == "skip":
-
-        await context.bot.send_message(
-            vote_chat,
-            f"🤷 {voter_name} ասաց «Կասկած չկա»"
-        )
-
-    else:
-
-        voted = int(voted)
-
-        await context.bot.send_message(
-            vote_chat,
-            f"🗳 {voter_name} ընտրեց {players[voted]}"
-        )
-
-    await query.edit_message_reply_markup(None)
-
     if len(votes) == len(players):
         await finish_vote(context)
-
 
 async def finish_vote(context):
 
@@ -218,17 +209,14 @@ async def finish_vote(context):
 
         await context.bot.send_message(
             vote_chat,
-            "🤷 Կասկած չկա\nՆոր քննարկում"
+            "🤷 Կասկած չկա\nՔննարկումը շարունակվում է"
         )
 
         t = discussion_time()
 
         await asyncio.sleep(t)
 
-        await context.bot.send_message(
-            vote_chat,
-            "Գրեք /vote"
-        )
+        await vote(None,context)
 
         return
 
@@ -236,70 +224,44 @@ async def finish_vote(context):
 
     if voted in spies:
 
+        spy_names=[]
+        citizen_names=[]
+
+        for p in players:
+
+            if p in spies:
+                spy_names.append(players[p])
+            else:
+                citizen_names.append(players[p])
+
         await context.bot.send_message(
             vote_chat,
-            f"🎉 Հաղթեցիք!\n\n{players[voted]} լրտես էր"
+            "🎉 Խաղը ավարտվեց\n\n"
+            f"📍 Ճիշտ բառը — {word}\n\n"
+            "🏆 Հաղթողներ\n"+"\n".join(citizen_names)+
+            "\n\n❌ Պարտվողներ\n"+"\n".join(spy_names)
         )
 
-        game_started = False
+        game_started=False
 
     else:
 
         await context.bot.send_message(
             vote_chat,
-            f"❌ {players[voted]} լրտես չէր"
+            f"❌ {players[voted]} լրտես չէր\nՔննարկումը շարունակվում է"
         )
 
+        t=discussion_time()
 
-async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await asyncio.sleep(t)
 
-    global game_started
+        await vote(None,context)
 
-    user = update.effective_user
-
-    if user.id not in spies:
-        await update.message.reply_text("Միայն լրտեսը կարող է գուշակել")
-        return
-
-    guess_word = " ".join(context.args)
-
-    if guess_word.lower() == word.lower():
-
-        await update.message.reply_text(
-            "🕵️ Լրտեսը հաղթեց!\nԽաղը ավարտվեց"
-        )
-
-        game_started = False
-
-    else:
-
-        await update.message.reply_text("❌ Սխալ բառ")
-
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    global players, spies, game_started
-
-    if not await is_admin(update, context):
-        await update.message.reply_text("⛔ Միայն ադմինը կարող է չեղարկել խաղը")
-        return
-
-    players = {}
-    spies = []
-    game_started = False
-
-    await update.message.reply_text("Խաղը չեղարկվեց")
-
-
-app = ApplicationBuilder().token(TOKEN).build()
+app = ApplicationBuilder().token("7950712985:AAFQTLOVMb3Jwk19HZzs85Fs78MvolHpocI").build()
 
 app.add_handler(CommandHandler("lrtes", lrtes))
 app.add_handler(CommandHandler("join", join))
-app.add_handler(CommandHandler("leave", leave))
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("vote", vote))
-app.add_handler(CommandHandler("guess", guess))
-app.add_handler(CommandHandler("cancel", cancel))
 app.add_handler(CallbackQueryHandler(button))
 
 app.run_polling()
