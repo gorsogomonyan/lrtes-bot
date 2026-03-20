@@ -291,7 +291,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Խաղը չեղարկվեց")
 
 
-app = ApplicationBuilder().token("7950712985:AAFQTLOVMb3Jwk19HZzs85Fs78MvolHpocI").build()
+app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("lrtes", lrtes))
 app.add_handler(CommandHandler("join", join))
